@@ -1,10 +1,9 @@
 export default async function handler(req, res) {
-  // CORS headers
+  // --- CORS ---
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Handle preflight OPTIONS request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -13,23 +12,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // --- Validate request body ---
+  const { prompt } = req.body || {};
+  if (!prompt) {
+    return res.status(400).json({ error: "Missing prompt" });
+  }
+
   try {
-    const { mood, topic, length, includeEmojis, includeHashtags, includeCTA } = req.body;
-
-    const prompt = `
-Generate 4 Instagram captions.
-Mood: ${mood}
-Topic: ${topic}
-Length: ${length}
-Include emojis: ${includeEmojis}
-Include hashtags: ${includeHashtags}
-Include CTA: ${includeCTA}
-
-Return ONLY a JSON array of 4 captions, like:
-["caption 1", "caption 2", "caption 3", "caption 4"]
-    `;
-
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    // --- Call OpenAI ---
+    const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -37,21 +28,54 @@ Return ONLY a JSON array of 4 captions, like:
       },
       body: JSON.stringify({
         model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You generate Instagram captions." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.8
-      })
+        input: `
+          You are an Instagram caption generator.
+          Return ONLY a JSON array of 5 short captions.
+          No explanation. No extra text. JSON ONLY.
+
+          Prompt: "${prompt}"
+        `,
+      }),
     });
 
-    const data = await openaiRes.json();
-    const raw = data.choices?.[0]?.message?.content || "";
-    const captions = JSON.parse(raw);
+    // Log status for debugging
+    console.log("OpenAI status:", openaiRes.status);
 
-    res.status(200).json({ captions });
+    const text = await openaiRes.text();
+    console.log("OpenAI raw response:", text);
+
+    if (!openaiRes.ok) {
+      return res.status(500).json({ error: "OpenAI request failed" });
+    }
+
+    // --- Parse OpenAI response ---
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      return res.status(500).json({ error: "Invalid JSON from OpenAI" });
+    }
+
+    const raw = data.output_text || data.output || data.choices?.[0]?.message?.content;
+
+    if (!raw) {
+      console.error("No usable content in OpenAI response:", data);
+      return res.status(500).json({ error: "OpenAI returned no content" });
+    }
+
+    // --- Parse captions array ---
+    let captions;
+    try {
+      captions = JSON.parse(raw);
+    } catch (err) {
+      console.error("Caption JSON parse error:", err, "Raw:", raw);
+      return res.status(500).json({ error: "OpenAI returned invalid caption JSON" });
+    }
+
+    return res.status(200).json({ captions });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Server error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 }
