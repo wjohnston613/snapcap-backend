@@ -19,8 +19,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- Call OpenAI ---
-    const openaiRes = await fetch("https://api.openai.com/v1/responses", {
+    // --- Call OpenAI (Chat Completions API) ---
+    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -28,17 +28,22 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o",
-        input: `
-          You are an Instagram caption generator.
-          Return ONLY a JSON array of 5 short captions.
-          No explanation. No extra text. JSON ONLY.
+        messages: [
+          {
+            role: "user",
+            content: `
+              You are an Instagram caption generator.
+              Return ONLY a JSON array of 5 short captions.
+              No explanation. No extra text. JSON ONLY.
 
-          Prompt: "${prompt}"
-        `,
+              Prompt: "${prompt}"
+            `,
+          },
+        ],
+        temperature: 0.7,
       }),
     });
 
-    // Log status for debugging
     console.log("OpenAI status:", openaiRes.status);
 
     const text = await openaiRes.text();
@@ -48,7 +53,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "OpenAI request failed" });
     }
 
-    // --- Parse OpenAI response ---
+    // --- Parse OpenAI JSON ---
     let data;
     try {
       data = JSON.parse(text);
@@ -57,7 +62,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Invalid JSON from OpenAI" });
     }
 
-    const raw = data.output_text || data.output || data.choices?.[0]?.message?.content;
+    const raw = data.choices?.[0]?.message?.content;
 
     if (!raw) {
       console.error("No usable content in OpenAI response:", data);
@@ -79,3 +84,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error" });
   }
 }
+
