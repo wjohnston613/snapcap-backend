@@ -44,22 +44,22 @@ export default async function handler(req, res) {
 
     console.log("OpenAI status:", openaiRes.status);
 
-    // --- READ BODY ONCE ---
-    const text = await openaiRes.text();
-    console.log("OpenAI raw response:", text);
+    // 🚨 READ BODY ONCE — THIS IS THE ONLY READ
+    const bodyText = await openaiRes.text();
+    console.log("OpenAI raw response:", bodyText);
 
     // --- If OpenAI returned an error ---
     if (!openaiRes.ok) {
       return res.status(500).json({
         error: "OpenAI error",
-        details: text, // reuse the already-read body
+        details: bodyText, // reuse the already-read body
       });
     }
 
     // --- Parse OpenAI JSON ---
     let data;
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(bodyText);
     } catch (err) {
       console.error("JSON parse error:", err);
       return res.status(500).json({ error: "Invalid JSON from OpenAI" });
