@@ -31,7 +31,26 @@ export default async function handler(req, res) {
         messages: [
           {
             role: "system",
-            content: "You generate Instagram captions as a JSON array of strings.",
+            content: `
+You are SnapCap, an Instagram caption generator.
+
+Return exactly 3 captions in strict JSON format:
+
+{
+  "captions": [
+    "caption 1",
+    "caption 2",
+    "caption 3"
+  ]
+}
+
+Rules:
+- Only output valid JSON.
+- No markdown.
+- No commentary.
+- No numbering.
+- No extra text before or after the JSON.
+            `,
           },
           {
             role: "user",
@@ -44,11 +63,9 @@ export default async function handler(req, res) {
 
     console.log("Groq status:", groqRes.status);
 
-    // Read body once
     const bodyText = await groqRes.text();
     console.log("Groq raw response:", bodyText);
 
-    // --- If Groq returned an error ---
     if (!groqRes.ok) {
       return res.status(500).json({
         error: "Groq error",
@@ -72,10 +89,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Groq returned no content" });
     }
 
-    // --- Parse captions array ---
+    // --- Parse captions JSON ---
     let captions;
     try {
-      captions = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      captions = parsed.captions;
     } catch (err) {
       console.error("Caption JSON parse error:", err, "Raw:", raw);
       return res.status(500).json({ error: "Groq returned invalid caption JSON" });
