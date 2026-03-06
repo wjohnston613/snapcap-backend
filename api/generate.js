@@ -20,29 +20,28 @@ export default async function handler(req, res) {
 
   try {
     // --- Call OpenAI (Chat Completions API) ---
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
+    },
+    body: JSON.stringify({
+        model: "gpt-4o-mini",
         messages: [
-          {
-            role: "user",
-            content: `
-              You are an Instagram caption generator.
-              Return ONLY a JSON array of 5 short captions.
-              No explanation. No extra text. JSON ONLY.
-
-              Prompt: "${prompt}"
-            `,
-          },
+            {
+                role: "system",
+                content: "You generate Instagram captions as a JSON array of strings.",
+            },
+            {
+                role: "user",
+                content: prompt,
+            },
         ],
-        temperature: 0.7,
-      }),
-    });
+        temperature: 0.8,
+    }),
+});
+
 
     console.log("OpenAI status:", openaiRes.status);
 
