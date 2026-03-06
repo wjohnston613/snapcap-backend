@@ -49,9 +49,12 @@ export default async function handler(req, res) {
     const text = await openaiRes.text();
     console.log("OpenAI raw response:", text);
 
-    if (!openaiRes.ok) {
-      return res.status(500).json({ error: "OpenAI request failed" });
-    }
+if (!openaiRes.ok) {
+    const errorText = await openaiRes.text();
+    console.error("OpenAI error:", errorText);
+    return res.status(500).json({ error: "OpenAI error", details: errorText });
+}
+
 
     // --- Parse OpenAI JSON ---
     let data;
