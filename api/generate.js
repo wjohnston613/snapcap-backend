@@ -19,15 +19,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- Call OpenAI ---
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    // --- Call Groq ---
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "llama-3.1-70b-versatile",
         messages: [
           {
             role: "system",
@@ -42,34 +42,34 @@ export default async function handler(req, res) {
       }),
     });
 
-    console.log("OpenAI status:", openaiRes.status);
+    console.log("Groq status:", groqRes.status);
 
-    // 🚨 READ BODY ONCE — THIS IS THE ONLY READ
-    const bodyText = await openaiRes.text();
-    console.log("OpenAI raw response:", bodyText);
+    // Read body once
+    const bodyText = await groqRes.text();
+    console.log("Groq raw response:", bodyText);
 
-    // --- If OpenAI returned an error ---
-    if (!openaiRes.ok) {
+    // --- If Groq returned an error ---
+    if (!groqRes.ok) {
       return res.status(500).json({
-        error: "OpenAI error",
-        details: bodyText, // reuse the already-read body
+        error: "Groq error",
+        details: bodyText,
       });
     }
 
-    // --- Parse OpenAI JSON ---
+    // --- Parse Groq JSON ---
     let data;
     try {
       data = JSON.parse(bodyText);
     } catch (err) {
       console.error("JSON parse error:", err);
-      return res.status(500).json({ error: "Invalid JSON from OpenAI" });
+      return res.status(500).json({ error: "Invalid JSON from Groq" });
     }
 
     const raw = data.choices?.[0]?.message?.content;
 
     if (!raw) {
-      console.error("No usable content in OpenAI response:", data);
-      return res.status(500).json({ error: "OpenAI returned no content" });
+      console.error("No usable content in Groq response:", data);
+      return res.status(500).json({ error: "Groq returned no content" });
     }
 
     // --- Parse captions array ---
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
       captions = JSON.parse(raw);
     } catch (err) {
       console.error("Caption JSON parse error:", err, "Raw:", raw);
-      return res.status(500).json({ error: "OpenAI returned invalid caption JSON" });
+      return res.status(500).json({ error: "Groq returned invalid caption JSON" });
     }
 
     return res.status(200).json({ captions });
