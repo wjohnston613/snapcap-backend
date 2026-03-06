@@ -19,41 +19,42 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- Call OpenAI (Chat Completions API) ---
-  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
+    // --- Call OpenAI ---
+    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
+      },
+      body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-            {
-                role: "system",
-                content: "You generate Instagram captions as a JSON array of strings.",
-            },
-            {
-                role: "user",
-                content: prompt,
-            },
+          {
+            role: "system",
+            content: "You generate Instagram captions as a JSON array of strings.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
         ],
         temperature: 0.8,
-    }),
-});
-
+      }),
+    });
 
     console.log("OpenAI status:", openaiRes.status);
 
+    // --- READ BODY ONCE ---
     const text = await openaiRes.text();
     console.log("OpenAI raw response:", text);
 
-if (!openaiRes.ok) {
-    const errorText = await openaiRes.text();
-    console.error("OpenAI error:", errorText);
-    return res.status(500).json({ error: "OpenAI error", details: errorText });
-}
-
+    // --- If OpenAI returned an error ---
+    if (!openaiRes.ok) {
+      return res.status(500).json({
+        error: "OpenAI error",
+        details: text, // reuse the already-read body
+      });
+    }
 
     // --- Parse OpenAI JSON ---
     let data;
